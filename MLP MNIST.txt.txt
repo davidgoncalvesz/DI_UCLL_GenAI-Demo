@@ -1,0 +1,261 @@
+#------------------------------------------------------------------
+#
+#       READ DATASET
+#
+#------------------------------------------------------------------
+import os
+import struct
+import numpy as np
+import gzip
+import matplotlib
+import matplotlib.pyplot as plt
+import sys
+
+def load_mnist(path, kind='train'):
+    """Load MNIST data from `path`"""
+    labels_path = os.path.join(path, 
+                               '%s-labels-idx1-ubyte.gz' % kind)
+    images_path = os.path.join(path, 
+                               '%s-images-idx3-ubyte.gz' % kind)
+        
+    with gzip.open(labels_path, 'rb') as lbpath:
+        lbpath.read(8)
+        buffer = lbpath.read()
+        labels = np.frombuffer(buffer, dtype=np.uint8)
+
+    with gzip.open(images_path, 'rb') as imgpath:
+        imgpath.read(16)
+        buffer = imgpath.read()
+        images = np.frombuffer(buffer, 
+                               dtype=np.uint8).reshape(
+            len(labels), 784).astype(np.float64)
+ 
+    return images, labels
+
+X_train, y_train = load_mnist('.', kind='train')
+
+X_test, y_test = load_mnist('.', kind='t10k')
+
+X_train.shape
+y_train.shape
+X_test.shape
+y_test.shape
+
+print('Dataset treino:', X_train.shape)
+print('Labels treino:', y_train.shape)
+print('Dataset test:', X_test.shape)
+print('Labels test:', y_test.shape)
+
+
+#------------------------------------------------------------------------
+#
+#  CHOOSE DIGIT TO PRINT
+#
+#------------------------------------------------------------------------
+
+
+digit_position = 36000
+# 36000 can be replaced by any number within the X_train range
+some_digit = X_train[digit_position]
+some_digit_image = some_digit.reshape(28, 28)
+
+plt.imshow(some_digit_image, cmap = matplotlib.cm.binary,
+           interpolation="nearest")
+plt.axis("off")
+plt.show()
+print('Digit is:', y_train[digit_position])
+
+#---------------------------------------------------------------------
+#
+#  PRINT SOME DIGITS
+#
+#---------------------------------------------------------------------
+
+fig, ax = plt.subplots(nrows=2, ncols=5, sharex=True, sharey=True,)
+ax = ax.flatten()
+for i in range(10):
+    img = X_train[y_train == i][0].reshape(28, 28)
+    ax[i].imshow(img, cmap='Greys', interpolation='nearest')
+
+ax[0].set_xticks([])
+ax[0].set_yticks([])
+plt.tight_layout()
+plt.savefig('.', dpi=300)
+plt.show()
+
+
+#---------------------------------------------------------------------
+#
+#  PRINT VARIANTS OF THE SAME DIGIT
+#
+#---------------------------------------------------------------------
+
+digit = 2
+#Choose digit to print variants
+fig, ax = plt.subplots(nrows=5, ncols=5, sharex=True, sharey=True,)
+ax = ax.flatten()
+for i in range(25):
+    img = X_train[y_train == digit][i].reshape(28, 28)
+    ax[i].imshow(img, cmap='Greys', interpolation='nearest')
+
+ax[0].set_xticks([])
+ax[0].set_yticks([])
+plt.tight_layout()
+plt.show()
+print('Digit is:', digit)
+
+#------------------------------------------------------------------------
+#
+#  SAVE DATASET INTO CSV FORMART
+#
+#-------------------------------------------------------------------------
+
+np.savetxt('train_img.csv', X_train, fmt='%i', delimiter=',')
+np.savetxt('train_labels.csv', y_train, fmt='%i', delimiter=',')
+np.savetxt('test_img.csv', X_test, fmt='%i', delimiter=',')
+np.savetxt('test_labels.csv', y_test, fmt='%i', delimiter=',')
+
+X_train = np.genfromtxt('train_img.csv', dtype=int, delimiter=',')
+y_train = np.genfromtxt('train_labels.csv', dtype=int, delimiter=',')
+X_test = np.genfromtxt('test_img.csv', dtype=int, delimiter=',')
+y_test = np.genfromtxt('test_labels.csv', dtype=int, delimiter=',')
+
+
+#---------------------------------------------------------------------------
+#
+#  MLP IMPLEMENTATION
+#
+#---------------------------------------------------------------------------
+
+from NeuralNet import NeuralNetMLP
+		
+		
+#-----------------------------------------------------------------------
+#  
+#  INITIALIZE A NEW 784-50-10 MLP
+#  A NEURAL NETWORK WITH
+#  784 INPUT UNITS (n_features)
+#  50 HIDDEN UNITS (n_hidden)
+#  10 OUTPUT UNITS (n_output)
+#  1000 epochs - The number of passes over the training set
+#  0.001 - eta - learning rate
+#  0.00001 decrease_const: The decrease constant for an adaptive  
+#          learning rate that decreases over time for better convergence
+#
+#------------------------------------------------------------------------
+
+nn = NeuralNetMLP(n_output=10, 
+                  n_features=X_train.shape[1], 
+                  n_hidden=50, 
+                  l2=0.1, 
+                  l1=0.0, 
+                  epochs=1000, 
+                  eta=0.001,
+                  alpha=0.001,
+                  decrease_const=0.00001,
+                  minibatches=50, 
+                  shuffle=True,
+                  random_state=1)
+				  
+
+#-------------------------------------------------------------------------
+#
+#	TRAIN THE NEURAL NETWORK
+#
+#-------------------------------------------------------------------------
+
+
+nn.fit(X_train, y_train, print_progress=True)
+
+#------------------------------------------------------------------------
+#
+#	CONFIRM CONVERGENCE - PRINT THE COST FUNCTION
+#
+#------------------------------------------------------------------------
+
+batches = np.array_split(range(len(nn.cost_)), 1000)
+cost_ary = np.array(nn.cost_)
+cost_avgs = [np.mean(cost_ary[i]) for i in batches]
+plt.plot(range(len(cost_avgs)), cost_avgs, color='red')
+plt.ylim([0, 2000])
+plt.ylabel('Cost')
+plt.xlabel('Epochs')
+plt.tight_layout()
+plt.show()
+
+
+#------------------------------------------------------------------------
+#
+#	PERFORMANCE OF THE MODEL
+#	PREDICTION ACCURANCY
+#
+#------------------------------------------------------------------------
+
+y_train_pred = nn.predict(X_train)
+
+if sys.version_info < (3, 0):
+    acc = ((np.sum(y_train == y_train_pred, axis=0)).astype('float') /
+           X_train.shape[0])
+else:
+    acc = np.sum(y_train == y_train_pred, axis=0) / X_train.shape[0]
+
+print('Training set accuracy: %.2f%%' % (acc * 100))
+
+y_test_pred = nn.predict(X_test)
+
+if sys.version_info < (3, 0):
+    acc = ((np.sum(y_test == y_test_pred, axis=0)).astype('float') /
+           X_test.shape[0])
+else:
+    acc = np.sum(y_test == y_test_pred, axis=0) / X_test.shape[0]
+
+print('Test set accuracy: %.2f%%' % (acc * 100))
+
+
+
+#------------------------------------------------------------------------
+#
+#	SEE WRONG PREDICTIONS
+#	C - Correct
+#	P - Model Prediction
+#
+#------------------------------------------------------------------------
+
+miscl_img = X_test[y_test != y_test_pred][:250]
+correct_lab = y_test[y_test != y_test_pred][:250]
+miscl_lab = y_test_pred[y_test != y_test_pred][:250]
+
+fig, ax = plt.subplots(nrows=5, ncols=5, sharex=True, sharey=True,)
+ax = ax.flatten()
+for i in range(25):
+    img = miscl_img[i].reshape(28, 28)
+    ax[i].imshow(img, cmap='Greys', interpolation='nearest')
+    ax[i].set_title('%d) C: %d P: %d' % (i+1, correct_lab[i], miscl_lab[i]))
+
+ax[0].set_xticks([])
+ax[0].set_yticks([])
+plt.tight_layout()
+plt.show()
+
+#------------------------------------------------------------------------
+#
+#	SEE SPECIFIC WRONG PREDICTIONS
+#	WRONG_NUMBER =  TO BE SPECIFIED
+#
+#------------------------------------------------------------------------
+
+wrong_number=5
+miscl_img1 = miscl_img[correct_lab==wrong_number]
+miscl_lab1 = miscl_lab[correct_lab==wrong_number]
+
+fig, ax = plt.subplots(nrows=2, ncols=4, sharex=True, sharey=True,)
+ax = ax.flatten()
+for i in range(8):
+    img = miscl_img1[i].reshape(28, 28)
+    ax[i].imshow(img, cmap='Greys', interpolation='nearest')
+    ax[i].set_title('P: %d' % (miscl_lab1[i]))
+
+ax[0].set_xticks([])
+ax[0].set_yticks([])
+plt.tight_layout()
+plt.show()
