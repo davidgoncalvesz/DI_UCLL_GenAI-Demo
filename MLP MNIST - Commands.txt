@@ -1,6 +1,7 @@
 #------------------------------------------------------------------
 #
 #       READ DATASET
+#       Importa as imagens e labels de treino e de teste
 #
 #------------------------------------------------------------------
 import os
@@ -50,6 +51,7 @@ print('Labels test:', y_test.shape)
 #------------------------------------------------------------------------
 #
 #  CHOOSE DIGIT TO PRINT
+#  Apresentar um determinado digito dentro das imagens do X_train
 #
 #------------------------------------------------------------------------
 
@@ -67,34 +69,14 @@ print('Digit is:', y_train[digit_position])
 
 #---------------------------------------------------------------------
 #
-#  PRINT SOME DIGITS
-#
-#---------------------------------------------------------------------
-
-fig, ax = plt.subplots(nrows=2, ncols=5, sharex=True, sharey=True,)
-ax = ax.flatten()
-for i in range(10):
-    img = X_train[y_train == i][0].reshape(28, 28)
-    ax[i].imshow(img, cmap='Greys', interpolation='nearest')
-
-ax[0].set_xticks([])
-ax[0].set_yticks([])
-plt.tight_layout()
-plt.savefig('.', dpi=300)
-plt.show()
-
-
-#---------------------------------------------------------------------
-#
 #  PRINT VARIANTS OF THE SAME DIGIT
 #
 #---------------------------------------------------------------------
 
-digit = 2
-#Choose digit to print variants
+digit = 2 #Choose digit to print variants
 fig, ax = plt.subplots(nrows=5, ncols=5, sharex=True, sharey=True,)
 ax = ax.flatten()
-for i in range(25):
+for i in range(25): #How many should be printed
     img = X_train[y_train == digit][i].reshape(28, 28)
     ax[i].imshow(img, cmap='Greys', interpolation='nearest')
 
@@ -103,23 +85,6 @@ ax[0].set_yticks([])
 plt.tight_layout()
 plt.show()
 print('Digit is:', digit)
-
-#------------------------------------------------------------------------
-#
-#  SAVE DATASET INTO CSV FORMART
-#
-#-------------------------------------------------------------------------
-
-np.savetxt('train_img.csv', X_train, fmt='%i', delimiter=',')
-np.savetxt('train_labels.csv', y_train, fmt='%i', delimiter=',')
-np.savetxt('test_img.csv', X_test, fmt='%i', delimiter=',')
-np.savetxt('test_labels.csv', y_test, fmt='%i', delimiter=',')
-
-X_train = np.genfromtxt('train_img.csv', dtype=int, delimiter=',')
-y_train = np.genfromtxt('train_labels.csv', dtype=int, delimiter=',')
-X_test = np.genfromtxt('test_img.csv', dtype=int, delimiter=',')
-y_test = np.genfromtxt('test_labels.csv', dtype=int, delimiter=',')
-
 
 #---------------------------------------------------------------------------
 #
@@ -132,11 +97,11 @@ from NeuralNet import NeuralNetMLP
 		
 #-----------------------------------------------------------------------
 #  
-#  INITIALIZE A NEW 784-50-10 MLP
-#  A NEURAL NETWORK WITH
-#  784 INPUT UNITS (n_features)
-#  50 HIDDEN UNITS (n_hidden)
-#  10 OUTPUT UNITS (n_output)
+#  Initialize MLP
+#  Neural Network Specs:
+#  784 inputs (n_features) (28x28)
+#  50 hidden layers (n_hidden)
+#  10 outputs (n_output)
 #  1000 epochs - The number of passes over the training set
 #  0.001 - eta - learning rate
 #  0.00001 decrease_const: The decrease constant for an adaptive  
@@ -144,7 +109,7 @@ from NeuralNet import NeuralNetMLP
 #
 #------------------------------------------------------------------------
 
-nn = NeuralNetMLP(n_output=10, 
+nn_1 = NeuralNetMLP(n_output=10, 
                   n_features=X_train.shape[1], 
                   n_hidden=50, 
                   l2=0.1, 
@@ -163,7 +128,6 @@ nn = NeuralNetMLP(n_output=10,
 #	TRAIN THE NEURAL NETWORK
 #
 #-------------------------------------------------------------------------
-
 
 nn.fit(X_train, y_train, print_progress=True)
 
